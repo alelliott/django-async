@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% load staticfiles %}
+{% block title %}Page Not Found{% endblock %}
+
+{% block content %}
+{% include "components/navbar.html" %}
+
+<section id="inBody">
+  <div class="contain semi relative">
+    <div class="content g404">
+      <h1 class="black">Page Not Found</h1>
+      <p class="regular">Sorry, but the page you are trying to view does not exist.</p>
+    </div>
+  </div>
+</section>
+{% endblock %}

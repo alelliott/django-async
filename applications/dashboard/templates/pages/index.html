@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+{% load staticfiles %}
+{% load custom_tags %}
+{% block title %}Dashboard | {% endblock %}
+{% block description %}Description Slug{% endblock %}
+
+{% block content %}
+
+{% include "components/navbar.html" %}
+
+<div class="container-fluid">
+  <div class="row">
+    <div class="col-sm-6">
+      <div id="task_runner_div" style="margin-top:50px;">
+        <h2>Task Runner</h2>
+        <form id="taskform" method="POST"> {% csrf_token %}
+          <div class="form-group">
+            <input class="form-control" id="task_name" type="text" placeholder="Task Name">
+          </div>
+          <button type="submit" id="go" class="btn btn-secondary">Run 3 sec task</button>
+        </form>
+      </div>
+    </div>
+  </div>
+  <div class="row">
+    <div class="col-sm-6">
+      <div id="task_status_div" style="margin-top:100px;">
+        <h2>Task Status</h2>
+        <table id="task_status" class="table">
+          <thead>
+            <tr>
+              <th>Task ID</th>
+              <th>Task Name</th>
+              <th>Task Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for task in tasks %}
+            <tr id="{{ task.name }}">
+              <td>{{ task.id }}</td>
+              <td>{{ task.name }}</td>
+              <td id="item-status-{{ task.id }}">
+                <span
+                  class="badge badge-pill badge-{% if task.status == 'completed' %}success{% else %}warning{% endif %}">
+                  {{ task.status }}
+                </span>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="container-fluid">
+  <footer class="footer">
+    Dashboard
+  </footer>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+  $(function () {
+    var formData = $("#taskform");
+    var inputBox = $("#task_name");
+
+    var ws_scheme = window.location.protocol == "https:" ? "wss" : "ws";
+    var ws_path = ws_scheme + '://' + window.location.host + window.location.pathname;
+    console.log("Connecting to " + ws_path);
+    var socket = new ReconnectingWebSocket(ws_path);
+
+    socket.onmessage = function (e) {
+      console.log("message: ", e);
+      var data = JSON.parse(e.data);
+      console.log(data)
+
+      // if action is started, add new item to table
+      if (data.action == "started") {
+        var task_status = $("#task_status");
+        var ele = $('<tr></tr>');
+        ele.attr("id", data.task_id);
+        var item_id = $("<td></td>").text(data.task_id);
+        ele.append(item_id);
+        var item_name = $("<td></td>").text(data.task_name);
+        ele.append(item_name);
+        var item_status = $("<td></td>");
+        item_status.attr("id", "item-status-" + data.task_id);
+        var span = $('<span class="badge badge-pill badge-warning"></span>').text(data.task_status);
+        item_status.append(span);
+        ele.append(item_status);
+        task_status.append(ele);
+      }
+      // if action is completed, update the status
+      else if (data.action == "completed") {
+        var item = $('#item-status-' + data.task_id + ' span');
+        item.attr("class", "badge badge-pill badge-success");
+        item.text(data.task_status);
+      }
+
+    };
+    socket.onopen = function (e) {
+      console.log("open: ", e);
+
+      formData.submit(function (event) {
+        event.preventDefault();
+        var inputText = inputBox.val();
+        var outputData = {
+          "message": inputText
+        };
+        socket.send(JSON.stringify(outputData));
+        formData[0].reset();
+      })
+    };
+    socket.onerror = function (e) {
+      console.log("error: ", e);
+    };
+    socket.onclose = function (e) {
+      console.log("close: ", e);
+    };
+  });
+</script>
+{% endblock %}

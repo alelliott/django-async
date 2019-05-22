@@ -1,0 +1,81 @@
+version: '3.6'
+
+networks:
+  mynetwork:
+    driver: bridge
+services:
+  postgres:
+    image: postgres
+    restart: always
+    networks:
+      - mynetwork
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASS}
+      POSTGRES_DB: ${DB_NAME}
+    ports:
+     - 5432:5432
+  redis:
+    image: redis
+    networks:
+      - mynetwork
+    ports:
+      - "6379"
+  rabbit:
+    image: rabbitmq:3-management
+    container_name: rabbit
+    networks:
+      - mynetwork
+    ports:
+      - "15672:15672"
+      - "${RABBIT_PORT}:5672"
+  web:
+    build:
+      context: .
+    networks:
+      - mynetwork
+    command: dockerize -wait tcp://postgres:5432 -wait tcp://redis:6379 -wait tcp://rabbit:5672 -timeout 1m sh -c "python manage.py makemigrations && python manage.py migrate && daphne {{project_name}}.asgi:application -b 0.0.0.0 -p 8000"
+    environment:
+      ENV: ${ENV}
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY}
+      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASS: ${DB_PASS}
+      DB_HOST: ${DB_HOST}
+      DB_PORT: ${DB_PORT}
+      REDIS_URL: ${REDIS_URL}
+      REDIS_HOST: ${REDIS_HOST}
+      REDIS_PORT: ${REDIS_PORT}
+      RABBIT_HOST: ${RABBIT_HOST}
+      RABBIT_PORT: ${RABBIT_PORT}
+      RABBIT_USER: ${RABBIT_USER}
+      RABBIT_PASS: ${RABBIT_PASS}
+      PYTHONDONTWRITEBYTECODE: 1
+      PYTHONUNBUFFERED: 1
+    ports:
+      - "8000:8000"
+    depends_on:
+      - postgres
+      - redis
+      - rabbit
+  workers:
+    build:
+      context: .
+    networks:
+      - mynetwork
+    environment:
+      ENV: ${ENV}
+      DB_USER: ${DB_USER}
+      DB_PASS: ${DB_PASS}
+      DB_HOST: ${DB_HOST}
+      REDIS_URL: ${REDIS_URL}
+      RABBIT_HOST: ${RABBIT_HOST}
+      RABBIT_PORT: ${RABBIT_PORT}
+      RABBIT_USER: ${RABBIT_USER}
+      RABBIT_PASS: ${RABBIT_PASS}
+      PYTHONDONTWRITEBYTECODE: 1
+      PYTHONUNBUFFERED: 1
+    depends_on:
+      - web
+      - rabbit
+    command: dockerize -wait http://web:8000 -timeout 1m celery -A {{ project_name }} worker -l info

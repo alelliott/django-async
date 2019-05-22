@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% load staticfiles %}
+{% block title %}Something Went Wrong{% endblock %}
+
+{% block content %}
+{% include "components/navbar.html" %}
+
+<section id="inBody">
+  <div class="contain semi relative">
+    <div class="content g404">
+      <h1 class="black">Something Went Wrong</h1>
+      <p class="regular">Our engineering team is aware and working on a fix. Please try again later.</p>
+    </div>
+  </div>
+</section>
+{% endblock %}

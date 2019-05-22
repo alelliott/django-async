@@ -1,0 +1,10 @@
+body {
+    margin: 0;
+    overflow-x: hidden;
+    font-weight: 300
+}
+
+a:focus,
+a:hover {
+    text-decoration: none
+}
